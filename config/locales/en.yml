@@ -31,3 +31,4 @@ en:
     click_link_to_view_wishlist: "Click the link below to view the %{name} page."
     quantity: "Quantity"
     total: "Total"
+    unauthorized: "You are not authorized to perform this action."

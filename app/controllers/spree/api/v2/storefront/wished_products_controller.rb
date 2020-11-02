@@ -25,7 +25,7 @@ module Spree
           end
 
           def update
-            @wished_product = Spree::WishedProduct.find(params[:id])
+            @wished_product = Spree::WishedProduct.find_by(id: params[:id])
             authorize! :update, @wished_product
             # TODO check if the current wished product wishlist is of ccurrent spree user
 

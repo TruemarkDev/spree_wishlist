@@ -14,7 +14,7 @@ module Spree
             authorize! :show, Spree::Wishlist
             @wishlist = Spree::Wishlist.find(params[:id])
 
-            if current_wishlist_user.equal?(@wishlist.user)
+            if @wishlist.can_be_read_by?(current_wishlist_user)
               render_serialized_payload { serialize_resource(@wishlist) }
             else
               # TODO: Add i18n here
@@ -23,15 +23,46 @@ module Spree
           end
 
           def create
-            
+            authorize! :create, Spree::Wishlist
+            @wishlist = current_wishlist_user.wishlists.new(wishlist_attributes)
+            @wishlist.save
+
+            if @wishlist.errors.empty?
+              render_serialized_payload(201) {serialize_resource(@wishlist)}
+            else
+              render_error_payload(@wishlist.errors)
+            end
+
           end
 
           def update
+            @wishlist = Spree::Wishlist.find_by(id: params[:id])
+            authorize! :update, @wishlist
+
+            @wishlist.update(wishlist_attributes)
+            if @wishlist.errors.empty?
+              render_serialized_payload(201) {serialize_resource(@wishlist)}
+            else
+              render_error_payload(@wishlist.errors)
+            end
+
           end
 
           def destroy
+            @wishlist = Spree::Wishlist.find_by(id: params[:id])
+            if @wishlist.user_id == current_wishlist_user.id
+              @wishlist.destroy!
+              render_serialized_payload(204) {serialize_resource(@wishlist)}
+            else
+              render_error_payload(Spree.t(:unauthorized))
+            end
           end
+
           private
+
+          def wishlist_attributes
+            params.require(:wishlist).permit(:name, :is_private, :is_default)
+          end
 
           def collection_serializer
             Spree::V2::Storefront::WishlistSerializer
