@@ -11,13 +11,7 @@ module Spree
 
             @wished_product = Spree::WishedProduct.new(wished_product_attributes)
 
-            current_wishlist_user = if params[:user_id] && @current_user_roles.include?('admin')
-              Spree.user_class.find(params[:user_id])
-            else
-              # if the API user is not an admin, or didn't ask for another user,
-              # return themselves.
-              spree_current_user
-            end
+            current_wishlist_user = spree_current_user
             @wishlist = current_wishlist_user.wishlists.find_by(id: @wished_product[:wishlist_id]) || current_wishlist_user.wishlist
 
             if @wishlist.include? params[:wished_product][:variant_id]
@@ -33,6 +27,7 @@ module Spree
           def update
             @wished_product = Spree::WishedProduct.find(params[:id])
             authorize! :update, @wished_product
+            # TODO check if the current wished product wishlist is of ccurrent spree user
 
             @wished_product.update(wished_product_attributes)
             @wishlist = @wished_product.wishlist

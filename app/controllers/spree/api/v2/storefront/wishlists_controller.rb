@@ -7,14 +7,30 @@ module Spree
 
           def index
             @wishlists = current_wishlist_user.wishlists.page(params[:page]).per(params[:per_page])
-            render_serialized_payload { serialize_collection(@wishlists) }
+            render_serialized_payload { @wishlists}
           end
 
           def show
             authorize! :show, Spree::Wishlist
-            render_serialized_payload { serialize_resource(resource) }
+            @wishlist = Spree::Wishlist.find(params[:id])
+
+            if current_wishlist_user.equal?(@wishlist.user)
+              render_serialized_payload { serialize_resource(@wishlist) }
+            else
+              # TODO: Add i18n here
+              render_error_payload('The wishlist is private.')
+            end
           end
 
+          def create
+            
+          end
+
+          def update
+          end
+
+          def destroy
+          end
           private
 
           def collection_serializer
@@ -38,17 +54,9 @@ module Spree
           end
 
           # to allow managing of other users' list by admins
-        def current_wishlist_user
-          @current_wishlist_user ||= begin
-            if params[:user_id] && @current_user_roles.include?('admin')
-              Spree.user_class.find(params[:user_id])
-            else
-              # if the API user is not an admin, or didn't ask for another user,
-              # return themselves.
-              spree_current_user
-            end
+          def current_wishlist_user
+            spree_current_user
           end
-        end
 
           def resource
             # TODO @prakash: we may not need permalink finder
