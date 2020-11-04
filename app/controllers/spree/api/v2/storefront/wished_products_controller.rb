@@ -11,8 +11,7 @@ module Spree
 
             @wished_product = Spree::WishedProduct.new(wished_product_attributes)
 
-            current_wishlist_user = spree_current_user
-            @wishlist = current_wishlist_user.wishlists.find_by(id: @wished_product[:wishlist_id]) || current_wishlist_user.wishlist
+            @wishlist = spree_current_user.wishlists.find_by(id: @wished_product[:wishlist_id]) || spree_current_user.wishlist
 
             if @wishlist.include? params[:wished_product][:variant_id]
               @wished_product = @wishlist.wished_products.detect {|wp| wp.variant_id == params[:wished_product][:variant_id].to_i }
@@ -25,12 +24,10 @@ module Spree
           end
 
           def update
-            @wished_product = Spree::WishedProduct.find_by(id: params[:id])
+            @wished_product = find_wished_product
             authorize! :update, @wished_product
-            # TODO check if the current wished product wishlist is of ccurrent spree user
 
-            @wished_product.update(wished_product_attributes)
-            @wishlist = @wished_product.wishlist
+            @wished_product.update(wished_product_attributes) if @wished_product.wishlist.can_be_read_by?(spree_current_user)
 
             if @wished_product.errors.empty?
               render_serialized_payload(200) {serialize_resource(@wished_product)}
@@ -40,7 +37,7 @@ module Spree
           end
 
           def destroy
-            @wished_product = Spree::WishedProduct.find(params[:id])
+            @wished_product = find_wished_product
             authorize! :destroy, @wished_product
             @wished_product.destroy
 
@@ -48,6 +45,10 @@ module Spree
           end
 
           private
+
+          def find_wished_product
+            Spree::WishlistProduct.find_by(id: params[:id])
+          end
 
           def wished_product_attributes
             params.require(:wished_product).permit(:variant_id, :wishlist_id, :remark, :quantity)
