@@ -5,6 +5,8 @@ module Spree
         class WishlistsController < ::Spree::Api::V2::BaseController
           include Spree::Api::V2::CollectionOptionsHelpers
 
+          before_action :find_wishlist, :only => [:destroy, :show, :update]
+
           def index
             @wishlists = current_wishlist_user.wishlists.page(params[:page]).per(params[:per_page])
             render_serialized_payload { @wishlists}
@@ -12,13 +14,11 @@ module Spree
 
           def show
             authorize! :show, Spree::Wishlist
-            @wishlist = Spree::Wishlist.find(params[:id])
 
             if @wishlist.can_be_read_by?(current_wishlist_user)
               render_serialized_payload { serialize_resource(@wishlist) }
             else
-              # TODO: Add i18n here
-              render_error_payload('The wishlist is private.')
+              render_error_payload(Spree.t(:private_wishlist))
             end
           end
 
@@ -36,10 +36,10 @@ module Spree
           end
 
           def update
-            @wishlist = Spree::Wishlist.find_by(id: params[:id])
             authorize! :update, @wishlist
 
             @wishlist.update(wishlist_attributes)
+
             if @wishlist.errors.empty?
               render_serialized_payload(201) {serialize_resource(@wishlist)}
             else
@@ -49,7 +49,8 @@ module Spree
           end
 
           def destroy
-            @wishlist = Spree::Wishlist.find_by(id: params[:id])
+            authorize! :destroy, @wished_product
+
             if @wishlist.user_id == current_wishlist_user.id
               @wishlist.destroy!
               render_serialized_payload(204) {serialize_resource(@wishlist)}
@@ -60,28 +61,16 @@ module Spree
 
           private
 
+          def find_wishlist
+            @wishlist = Spree::Wishlist.find_by(id: params[:id])
+          end
+
           def wishlist_attributes
             params.require(:wishlist).permit(:name, :is_private, :is_default)
           end
 
-          def collection_serializer
-            Spree::V2::Storefront::WishlistSerializer
-          end
-
           def resource_serializer
             Spree::V2::Storefront::WishlistSerializer
-          end
-
-          def collection_finder
-            Spree::Wishlist
-          end
-
-          def paginated_collection
-            collection_paginator.new(collection, params).call
-          end
-
-          def collection
-            collection_finder.new(scope: scope, params: params).execute
           end
 
           # to allow managing of other users' list by admins

@@ -4,6 +4,8 @@ module Spree
       module Storefront
         class WishedProductsController < Spree::Api::V2::BaseController
 
+          before_action :find_wished_product, only: [:update, :destory]
+
           helper Spree::Wishlists::ApiHelpers
 
           def create
@@ -24,7 +26,6 @@ module Spree
           end
 
           def update
-            @wished_product = find_wished_product
             authorize! :update, @wished_product
 
             @wished_product.update(wished_product_attributes) if @wished_product.wishlist.can_be_read_by?(spree_current_user)
@@ -37,7 +38,6 @@ module Spree
           end
 
           def destroy
-            @wished_product = find_wished_product
             authorize! :destroy, @wished_product
             @wished_product.destroy
 
@@ -47,7 +47,7 @@ module Spree
           private
 
           def find_wished_product
-            Spree::WishlistProduct.find_by(id: params[:id])
+            @wished_product = Spree::WishlistProduct.find_by(id: params[:id])
           end
 
           def wished_product_attributes
