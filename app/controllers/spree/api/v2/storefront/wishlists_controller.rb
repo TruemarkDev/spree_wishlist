@@ -8,14 +8,14 @@ module Spree
           before_action :find_wishlist, :only => [:destroy, :show, :update]
 
           def index
-            @wishlists = current_wishlist_user.wishlists.page(params[:page]).per(params[:per_page])
+            @wishlists = spree_current_user.wishlists.page(params[:page]).per(params[:per_page])
             render_serialized_payload { @wishlists}
           end
 
           def show
             authorize! :show, Spree::Wishlist
 
-            if @wishlist.can_be_read_by?(current_wishlist_user)
+            if @wishlist.can_be_read_by?(spree_current_user)
               render_serialized_payload { serialize_resource(@wishlist) }
             else
               render_error_payload(Spree.t(:private_wishlist))
@@ -24,7 +24,7 @@ module Spree
 
           def create
             authorize! :create, Spree::Wishlist
-            @wishlist = current_wishlist_user.wishlists.new(wishlist_attributes)
+            @wishlist = spree_current_user.wishlists.new(wishlist_attributes)
             @wishlist.save
 
             if @wishlist.errors.empty?
@@ -51,7 +51,7 @@ module Spree
           def destroy
             authorize! :destroy, @wished_product
 
-            if @wishlist.user_id == current_wishlist_user.id
+            if @wishlist.user_id == spree_current_user.id
               @wishlist.destroy!
               render_serialized_payload(204) {serialize_resource(@wishlist)}
             else
@@ -71,11 +71,6 @@ module Spree
 
           def resource_serializer
             Spree::V2::Storefront::WishlistSerializer
-          end
-
-          # to allow managing of other users' list by admins
-          def current_wishlist_user
-            spree_current_user
           end
 
           def resource
