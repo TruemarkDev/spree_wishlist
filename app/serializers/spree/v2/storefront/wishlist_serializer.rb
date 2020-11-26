@@ -4,9 +4,9 @@ module Spree
       class WishlistSerializer < BaseSerializer
         set_type :wishlist
 
-        attributes :name, :is_private, :is_default
+        attributes :access_hash, :name, :is_private, :is_default
 
-        has_one :user
+        belongs_to :user
         has_many :wished_products
       end
     end

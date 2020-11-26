@@ -2,68 +2,67 @@ module Spree
   module Api
     module V2
       module Storefront
-        class WishedProductsController < Spree::Api::V2::BaseController
-
-          before_action :find_wished_product, only: [:update, :destory]
-
-          helper Spree::Wishlists::ApiHelpers
+        class WishedProductsController < ::Spree::Api::V2::BaseController
 
           def create
-            authorize! :create, Spree::WishedProduct
+            spree_authorize! :create, Spree::WishedProduct
+            spree_authorize! :update, wishlist
 
-            @wished_product = Spree::WishedProduct.new(wished_product_attributes)
+            wished_product = Spree::WishedProduct.new(wished_product_attributes)
 
-            @wishlist = spree_current_user.wishlists.find_by(id: @wished_product[:wishlist_id]) || spree_current_user.wishlist
-
-            if @wishlist.include? params[:wished_product][:variant_id]
-              @wished_product = @wishlist.wished_products.detect {|wp| wp.variant_id == params[:wished_product][:variant_id].to_i }
+            if wishlist.include? params[:wished_product][:variant_id]
+              wished_product = wishlist.wished_products.detect {|wp| wp.variant_id == params[:wished_product][:variant_id].to_i }
             else
-              @wished_product.wishlist = @wishlist
-              @wished_product.save
+              wished_product.wishlist = wishlist
+              wished_product.save
             end
 
-            render_serialized_payload(201) { serialize_resource(@wished_product) }
+            wishlist.reload
+            if wished_product.persisted?
+              render_serialized_payload { serialize_resource(wished_product) }
+            else
+              render_error_payload(wished_product.errors.full_messages.to_sentence)
+            end
           end
 
           def update
-            authorize! :update, @wished_product
+            spree_authorize! :update, resource
+            resource.update(wished_product_attributes)
 
-            @wished_product.update(wished_product_attributes) if @wished_product.wishlist.can_be_read_by?(spree_current_user)
-
-            if @wished_product.errors.empty?
-              render_serialized_payload(200) {serialize_resource(@wished_product)}
+            if resource.errors.empty?
+              render_serialized_payload { serialize_resource(resource) }
             else
-              render_error_payload(@wished_product.errors)
+              render_error_payload(resource.errors.full_messages.to_sentence)
             end
           end
 
           def destroy
-            authorize! :destroy, @wished_product
-            @wished_product.destroy
-
-            render_serialized_payload(204) { serialize_resource(@wished_product)}
+            spree_authorize! :destroy, resource
+            if resource.destroy
+              render_serialized_payload { serialize_resource(resource) }
+            else
+              render_error_payload('Something went wrong')
+            end
           end
 
           private
 
-          def find_wished_product
-            @wished_product = Spree::WishlistProduct.find_by(id: params[:id])
+          def resource
+            @resource ||= wishlist.wished_products.find(params[:id])
+          end
+
+          def wishlist
+            @wishlist ||= Spree::Wishlist.find_by!(access_hash: params[:wishlist_id])
           end
 
           def wished_product_attributes
-            params.require(:wished_product).permit(:variant_id, :wishlist_id, :remark, :quantity)
+            params.require(:wished_product).permit(:variant_id, :quantity, :remark)
           end
 
           def resource_serializer
-            Spree::V2::Storefront::WishedProductSerializer
+            ::Spree::V2::Storefront::WishedProductSerializer
           end
-
-          def collection_serializer
-            Spree::V2::Storefront::WishedProductSerializer
-          end
-
-        end # eoc
-
+        end
       end
     end
   end
